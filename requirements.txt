@@ -1,0 +1,6 @@
+pydantic==2.5.2
+requests
+aiofiles
+aiohttp
+beautifulsoup4
+lxml
