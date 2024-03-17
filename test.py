@@ -1,21 +1,17 @@
 import logging
 import re
-from typing import Optional
 
 import requests
-from bs4 import BeautifulSoup, SoupStrainer, NavigableString, Tag
-from pydantic import BaseModel, Field
+from bs4 import BeautifulSoup, SoupStrainer, Tag
 
-from tools.tools import match_clean
 from tools.logging_utils import log_set
-from tools.pydantic_types import ContractAnnouncementDetails, ContractMainInfo, ContractMainSubject
-
+from tools.tools import match_clean
 
 log_set(logging.DEBUG)
 
 
 def match_info(string: str):
-    match = re.match(r"^(?:.*?[,、])?(?P<key>.*?)[：:]\s*(?P<value>.*)?$", string)
+    match = re.match(r"^(?:.*?[,、])?(?P<key>.*?)(?:[：:]\s*(?P<value>.*))?$", string)
     if match:
         logging.debug(f"match_dict: {match.groupdict()}")
 
