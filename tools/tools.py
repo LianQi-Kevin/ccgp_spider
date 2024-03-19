@@ -1,9 +1,45 @@
 import re
+from typing import Optional, Dict
 
 
 def match_clean(string: str) -> str:
     """去除字符串中的所有空白/特殊字符"""
     return re.sub(r"\s+", "", string.strip())
+
+
+def match_info(string: str) -> Optional[Dict[str, str]]:
+    """匹配字符串中的信息并返回字典形式"""
+    match = re.match(r"^(?:(?P<main_key>.)[,、])?(?P<key>.*?)(?:[：:]{1,4}\s*(?P<value>.*))?$", string)
+    # 设置value默认值
+    if match:
+        match_dict = match.groupdict()
+        match_dict["value"] = match_dict["value"] if match_dict["value"] else {}
+        return match_dict
+    else:
+        return None
+
+
+def get_fileid(onclick_str: str) -> Optional[str]:
+    """获取文件id"""
+    match = re.search(r"'([^']*)'", onclick_str)
+    return match.group(1) if match else None
+
+
+def clean_contents(contents: list) -> list:
+    """清洗内容"""
+    return [content for content in contents if content.text != "\n"]
+
+
+def flatten_dict(d: dict, parent_key='', sep='_') -> dict:
+    """展平字典"""
+    items = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
 
 
 # 常见的 user-agent 列表

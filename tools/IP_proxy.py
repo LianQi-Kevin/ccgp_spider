@@ -1,4 +1,7 @@
-import logging
+"""
+IP池: https://www.zmhttp.com/users_getapi/
+"""
+
 from typing import Optional, List
 
 import requests
@@ -30,13 +33,11 @@ def get_proxy(url: str) -> str:
     https (bool): A flag to indicate if the proxy should be https or http. Default is True (https).
 
     Returns:
-    str: A string representation of the proxy in the format 'http(s)://ip:port'.
+    str: A string representation of the proxy in the format 'ip:port'.
     """
     response = requests.get(url)
     response.raise_for_status()
     response = LetecsProxysResponse(**response.json())
     if response.success:
         print(len(response.data))
-        for proxy_ in response.data:
-            logging.debug(f"Successfully get proxy: {proxy_}")
-            yield f"{proxy_.ip}:{proxy_.port}"
+        return f"http://{response.data[0].ip}:{response.data[0].port}"
