@@ -1,5 +1,5 @@
 import re
-from typing import Optional, Dict
+from typing import Optional, Dict, Union
 
 
 def match_clean(string: str) -> str:
@@ -7,7 +7,7 @@ def match_clean(string: str) -> str:
     return re.sub(r"\s+", "", string.strip())
 
 
-def match_info(string: str) -> Optional[Dict[str, str]]:
+def match_info(string: str) -> Optional[Dict[str, Union[str, dict]]]:
     """匹配字符串中的信息并返回字典形式"""
     match = re.match(r"^(?:(?P<main_key>.)[,、])?(?P<key>.*?)(?:[：:]{1,4}\s*(?P<value>.*))?$", string)
     # 设置value默认值

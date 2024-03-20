@@ -159,6 +159,8 @@ async def parse_contract(_html_content: str) -> ContractModel:
 
 async def get_subPage(url: str):
     async with ClientSession(trust_env=False) as session:
+        # 异步delay
+        await asyncio.sleep(random.uniform(1.0, 3.0))
         async with session.get(
                 url=url,
                 headers=random.choice(headers_list),
@@ -189,15 +191,13 @@ async def get_page_max(html_data: str) -> int:
         return 0
 
 
-async def get_ccgp_detail(html_data: str) -> list:
+async def get_ccgp_detail(html_data: str, queue: asyncio.Queue) -> None:
     """获取详情页"""
     # 使用bs4实例化并过滤 class='main_list'
     soup = BeautifulSoup(html_data, "lxml", parse_only=SoupStrainer("div", attrs={"class": "main_list"}))
     lst_main = soup.find("ul", attrs={"class": "ulst"}).find_all("li")[1:]  # 去掉第一个元素
 
-    # 遍历列表
-    export = []
-    for item in lst_main:
+    async def fetch_detail(item):
         base_data = {
             'signing_date': match_clean(item.find('div').span.text),
             'contract_URL': f"{PRICE_DETAIL_API}/{item.find('a')['href']}",
@@ -208,10 +208,13 @@ async def get_ccgp_detail(html_data: str) -> list:
         logging.debug(f"sub_url: {base_data['contract_URL']}")
         sub_html_data = await get_subPage(base_data['contract_URL'])
         subpage_info = await parse_contract(sub_html_data)
+
+        # 将处理好的数据放入队列
         write_data = {**base_data, **subpage_info.model_dump()}
-        logging.debug(f"write data: {write_data}")
-        export.append(write_data)
-    return export
+        await queue.put(write_data)
+
+    tasks = [fetch_detail(item) for item in lst_main]
+    await asyncio.gather(*tasks)
 
 
 async def get_ccgp_main(index: int = 1) -> str:
@@ -244,9 +247,8 @@ async def task_main(queue: asyncio.Queue, semaphore: asyncio.Semaphore = asyncio
         async with semaphore:
             # 异步delay
             await asyncio.sleep(delay)
-            html_data = await get_ccgp_main(index=index)
-            for data in await get_ccgp_detail(html_data):
-                await queue.put(data)
+            await get_ccgp_detail(html_data=await get_ccgp_main(index=index), queue=queue)
+
     except ClientError as e:
         logging.warning(f"aiohttp request error, retry count: {retry_count}, error: {e}")
         await asyncio.sleep(3)
@@ -259,9 +261,11 @@ async def task_main(queue: asyncio.Queue, semaphore: asyncio.Semaphore = asyncio
 
 async def main(export_path: str = "ccgp.csv"):
     # 获取最大页数
-    await get_ccgp_main(index=1)
-    max_pages = await get_page_max(await get_ccgp_main(index=1))
-    logging.debug(f"max_pages: {max_pages}")
+    # await get_ccgp_main(index=1)
+    # max_pages = await get_page_max(await get_ccgp_main(index=1))
+    # logging.debug(f"max_pages: {max_pages}")
+
+    max_pages = 1
 
     # 创建队列
     queue = asyncio.Queue()
@@ -274,7 +278,7 @@ async def main(export_path: str = "ccgp.csv"):
     semaphore = asyncio.Semaphore(100)
     tasks = [
         task_main(queue=queue, semaphore=semaphore, index=index, delay=random.uniform(1.0, 5.0), retry_count=15)
-        for index in range(1, max_pages)
+        for index in range(1, max_pages + 1)
     ]
 
     await asyncio.gather(*tasks)
